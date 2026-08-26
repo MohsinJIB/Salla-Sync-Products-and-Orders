@@ -15,7 +15,7 @@ use League\OAuth2\Client\Token\AccessToken;
  * @property string $event
  * @property array $data
  */
-class StoreAuthorize extends BaseAction
+class StoreAuthorize extends BaseAction // handles the app.store.authorize event
 {
     public function handle(): void
     {
@@ -27,15 +27,18 @@ class StoreAuthorize extends BaseAction
         }
 
         $storeDetails = $service->getResourceOwner(new AccessToken($this->data));
-
+        // Use the store name when the demo store has no owner name.
+        $merchantName = $storeDetails->getStoreOwnerName()
+            ?: $storeDetails->getStoreName()
+            ?: 'Salla Merchant';
         $user = User::query()->firstOrCreate([
             'email' => $storeDetails->getEmail(),
         ], [
-            'name' => $storeDetails->getStoreOwnerName(),
+            'name' => $merchantName,
             'password' => Hash::make(Str::random()),
         ]);
 
-        $user->token()->updateOrCreate([], [
+        $user->token()->updateOrCreate([], [ //Saves the merchant ID, access token, refresh token, and expiry in oauth_tokens
             'merchant' => $storeDetails->getStoreId(),
             'access_token' => $this->data['access_token'],
             'expires_in' => $this->data['expires'],
